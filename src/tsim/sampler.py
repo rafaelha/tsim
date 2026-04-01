@@ -9,6 +9,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import psutil
+from pyzx_param.simulate import DecompositionStrategy
 
 from tsim.compile.evaluate import evaluate
 from tsim.compile.pipeline import compile_program
@@ -139,6 +140,7 @@ class _CompiledSamplerBase:
         *,
         sample_detectors: bool,
         mode: Literal["sequential", "joint"],
+        strategy: DecompositionStrategy = "cat5",
         seed: int | None = None,
     ):
         """Initialize the sampler by compiling the circuit.
@@ -147,6 +149,8 @@ class _CompiledSamplerBase:
             circuit: The quantum circuit to compile.
             sample_detectors: If True, sample detectors/observables instead of measurements.
             mode: Compilation mode - "sequential" for autoregressive, "joint" for probabilities.
+            strategy: Stabilizer rank decomposition strategy.
+                Must be one of "cat5", "bss", "cutting".
             seed: Random seed. If None, a random seed is generated.
 
         """
@@ -156,7 +160,7 @@ class _CompiledSamplerBase:
         self._key = jax.random.key(seed)
 
         prepared = prepare_graph(circuit, sample_detectors=sample_detectors)
-        self._program = compile_program(prepared, mode=mode)
+        self._program = compile_program(prepared, mode=mode, strategy=strategy)
 
         channel_seed = int(np.random.default_rng(seed).integers(0, 2**30))
         self._channel_sampler = ChannelSampler(
@@ -273,15 +277,29 @@ class CompiledMeasurementSampler(_CompiledSamplerBase):
     - compiled_scalar_graphs[i]: cumulative probability up to bit i
     """
 
-    def __init__(self, circuit: Circuit, *, seed: int | None = None):
+    def __init__(
+        self,
+        circuit: Circuit,
+        *,
+        strategy: DecompositionStrategy = "cat5",
+        seed: int | None = None,
+    ):
         """Create a measurement sampler.
 
         Args:
             circuit: The quantum circuit to compile.
+            strategy: Stabilizer rank decomposition strategy.
+                Must be one of "cat5", "bss", "cutting".
             seed: Random seed for JAX. If None, a random seed is generated.
 
         """
-        super().__init__(circuit, sample_detectors=False, mode="sequential", seed=seed)
+        super().__init__(
+            circuit,
+            sample_detectors=False,
+            mode="sequential",
+            seed=seed,
+            strategy=strategy,
+        )
 
     def sample(self, shots: int, *, batch_size: int | None = None) -> np.ndarray:
         """Sample measurement outcomes from the circuit.
@@ -310,15 +328,29 @@ def _maybe_bit_pack(array: np.ndarray, *, bit_packed: bool) -> np.ndarray:
 class CompiledDetectorSampler(_CompiledSamplerBase):
     """Samples detector and observable outcomes from a quantum circuit."""
 
-    def __init__(self, circuit: Circuit, *, seed: int | None = None):
+    def __init__(
+        self,
+        circuit: Circuit,
+        *,
+        strategy: DecompositionStrategy = "cat5",
+        seed: int | None = None,
+    ):
         """Create a detector sampler.
 
         Args:
             circuit: The quantum circuit to compile.
+            strategy: Stabilizer rank decomposition strategy.
+                Must be one of "cat5", "bss", "cutting".
             seed: Random seed for JAX. If None, a random seed is generated.
 
         """
-        super().__init__(circuit, sample_detectors=True, mode="sequential", seed=seed)
+        super().__init__(
+            circuit,
+            sample_detectors=True,
+            mode="sequential",
+            seed=seed,
+            strategy=strategy,
+        )
 
     @overload
     def sample(
@@ -414,6 +446,7 @@ class CompiledStateProbs(_CompiledSamplerBase):
         circuit: Circuit,
         *,
         sample_detectors: bool = False,
+        strategy: DecompositionStrategy = "cat5",
         seed: int | None = None,
     ):
         """Create a probability estimator.
@@ -421,11 +454,17 @@ class CompiledStateProbs(_CompiledSamplerBase):
         Args:
             circuit: The quantum circuit to compile.
             sample_detectors: If True, compute detector/observable probabilities.
+            strategy: Stabilizer rank decomposition strategy.
+                Must be one of "cat5", "bss", "cutting".
             seed: Random seed for JAX. If None, a random seed is generated.
 
         """
         super().__init__(
-            circuit, sample_detectors=sample_detectors, mode="joint", seed=seed
+            circuit,
+            sample_detectors=sample_detectors,
+            mode="joint",
+            seed=seed,
+            strategy=strategy,
         )
 
     def probability_of(self, state: np.ndarray, *, batch_size: int) -> np.ndarray:
