@@ -60,7 +60,7 @@ class Circuit:
         return c
 
     def append_from_stim_program_text(self, stim_program_text: str) -> None:
-        """Append operations described by a STIM format program into the circuit.
+        """Append operations described by a Stim format program into the circuit.
 
         Supports the same shorthand syntax as the constructor.
         """
