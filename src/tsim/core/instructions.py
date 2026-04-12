@@ -177,11 +177,17 @@ def u3(
 # =============================================================================
 
 
-def i(b: GraphRepresentation, qubit: int) -> None:
+def i(b: GraphRepresentation, qubit: int, *_args: float) -> None:
     """Apply identity (advances the row)."""
     ensure_lane(b, qubit)
     v = b.last_vertex[qubit]
     b.graph.set_row(v, last_row(b, qubit) + 1)
+
+
+def ii(b: GraphRepresentation, qubit1: int, qubit2: int) -> None:
+    """Apply two-qubit identity (advances the row on both qubits)."""
+    i(b, qubit1)
+    i(b, qubit2)
 
 
 def x(b: GraphRepresentation, qubit: int) -> None:
@@ -213,10 +219,51 @@ def c_xyz(b: GraphRepresentation, qubit: int) -> None:
     b.graph.scalar.add_phase(Fraction(-1, 4))
 
 
+def c_nxyz(b: GraphRepresentation, qubit: int) -> None:
+    """Period 3 axis cycling gate, sending -X -> Y -> Z -> -X."""
+    s_dag(b, qubit)
+    sqrt_y_dag(b, qubit)
+    b.graph.scalar.add_phase(Fraction(1, 4))
+
+
+def c_xnyz(b: GraphRepresentation, qubit: int) -> None:
+    """Period 3 axis cycling gate, sending X -> -Y -> Z -> X."""
+    s(b, qubit)
+    h(b, qubit)
+
+
+def c_xynz(b: GraphRepresentation, qubit: int) -> None:
+    """Period 3 axis cycling gate, sending X -> Y -> -Z -> X."""
+    s(b, qubit)
+    sqrt_y_dag(b, qubit)
+    b.graph.scalar.add_phase(Fraction(1, 4))
+
+
 def c_zyx(b: GraphRepresentation, qubit: int) -> None:
     """Left handed period 3 axis cycling gate, sending Z -> Y -> X -> Z."""
     h(b, qubit)
     s(b, qubit)
+    b.graph.scalar.add_phase(Fraction(1, 4))
+
+
+def c_nzyx(b: GraphRepresentation, qubit: int) -> None:
+    """Period 3 axis cycling gate, sending -Z -> Y -> X -> -Z."""
+    s_dag(b, qubit)
+    sqrt_x(b, qubit)
+    b.graph.scalar.add_phase(Fraction(-1, 4))
+
+
+def c_znyx(b: GraphRepresentation, qubit: int) -> None:
+    """Period 3 axis cycling gate, sending Z -> -Y -> X -> Z."""
+    s(b, qubit)
+    sqrt_x(b, qubit)
+    b.graph.scalar.add_phase(Fraction(-1, 4))
+
+
+def c_zynx(b: GraphRepresentation, qubit: int) -> None:
+    """Period 3 axis cycling gate, sending Z -> Y -> -X -> Z."""
+    s(b, qubit)
+    sqrt_x_dag(b, qubit)
     b.graph.scalar.add_phase(Fraction(1, 4))
 
 
@@ -241,10 +288,30 @@ def h_xy(b: GraphRepresentation, qubit: int) -> None:
     b.graph.scalar.add_phase(Fraction(-1, 4))
 
 
+def h_nxy(b: GraphRepresentation, qubit: int) -> None:
+    """Apply Hadamard-like gate that sends -X <-> Y, Z -> -Z."""
+    x(b, qubit)
+    s_dag(b, qubit)
+
+
+def h_nxz(b: GraphRepresentation, qubit: int) -> None:
+    """Apply Hadamard-like gate that sends -X <-> Z."""
+    z(b, qubit)
+    sqrt_y_dag(b, qubit)
+    b.graph.scalar.add_phase(Fraction(1, 4))
+
+
 def h_yz(b: GraphRepresentation, qubit: int) -> None:
     """Apply variant of Hadamard gate that swaps the Y and Z axes (instead of X and Z)."""
     sqrt_x(b, qubit)
     z(b, qubit)
+    b.graph.scalar.add_phase(Fraction(-1, 4))
+
+
+def h_nyz(b: GraphRepresentation, qubit: int) -> None:
+    """Apply Hadamard-like gate that sends -Y <-> Z, X -> -X."""
+    z(b, qubit)
+    sqrt_x(b, qubit)
     b.graph.scalar.add_phase(Fraction(-1, 4))
 
 
@@ -392,6 +459,30 @@ def swap(b: GraphRepresentation, qubit1: int, qubit2: int) -> None:
 
     b.graph.set_qubit(v1, qubit2)
     b.graph.set_qubit(v2, qubit1)
+
+
+def cxswap(b: GraphRepresentation, qubit1: int, qubit2: int) -> None:
+    """Apply CX then SWAP."""
+    cnot(b, qubit1, qubit2)
+    swap(b, qubit1, qubit2)
+
+
+def czswap(b: GraphRepresentation, qubit1: int, qubit2: int) -> None:
+    """Apply CZ then SWAP."""
+    cz(b, qubit1, qubit2)
+    swap(b, qubit1, qubit2)
+
+
+def swapcx(b: GraphRepresentation, qubit1: int, qubit2: int) -> None:
+    """Apply SWAP then CX."""
+    swap(b, qubit1, qubit2)
+    cnot(b, qubit1, qubit2)
+
+
+def swapcz(b: GraphRepresentation, qubit1: int, qubit2: int) -> None:
+    """Apply SWAP then CZ."""
+    swap(b, qubit1, qubit2)
+    cz(b, qubit1, qubit2)
 
 
 def iswap(b: GraphRepresentation, qubit1: int, qubit2: int) -> None:
@@ -892,6 +983,21 @@ def my(b: GraphRepresentation, qubit: int, p: float = 0, invert: bool = False) -
     h_yz(b, qubit)
 
 
+def mxx(b: GraphRepresentation, q0: int, q1: int, invert: bool = False) -> None:
+    """Measure two qubits in XX basis."""
+    mpp(b, [("X", q0), ("X", q1)], invert)
+
+
+def myy(b: GraphRepresentation, q0: int, q1: int, invert: bool = False) -> None:
+    """Measure two qubits in YY basis."""
+    mpp(b, [("Y", q0), ("Y", q1)], invert)
+
+
+def mzz(b: GraphRepresentation, q0: int, q1: int, invert: bool = False) -> None:
+    """Measure two qubits in ZZ basis."""
+    mpp(b, [("Z", q0), ("Z", q1)], invert)
+
+
 def r(b: GraphRepresentation, qubit: int) -> None:
     """Z-basis reset.
 
@@ -977,6 +1083,12 @@ def tick(b: GraphRepresentation) -> None:
 GATE_TABLE: dict[str, tuple[Callable[..., None], int]] = {
     # ---- Pauli gates -----------------------------------------------------------
     "I": (i, 1),
+    "I_ERROR": (i, 1),
+    # QUBIT_COORDS is a visualization annotation; dispatched as identity to allocate
+    # the qubit lane. Coordinate args are accepted and ignored by `i`.
+    "QUBIT_COORDS": (i, 1),
+    "II": (ii, 2),
+    "II_ERROR": (ii, 2),
     "X": (x, 1),
     "Y": (y, 1),
     "Z": (z, 1),
@@ -984,12 +1096,21 @@ GATE_TABLE: dict[str, tuple[Callable[..., None], int]] = {
     "T": (t, 1),
     "T_DAG": (t_dag, 1),
     # ---- Single-qubit gates ---------------------------------------------------
+    "C_NXYZ": (c_nxyz, 1),
+    "C_NZYX": (c_nzyx, 1),
+    "C_XNYZ": (c_xnyz, 1),
+    "C_XYNZ": (c_xynz, 1),
     "C_XYZ": (c_xyz, 1),
+    "C_ZNYX": (c_znyx, 1),
+    "C_ZYNX": (c_zynx, 1),
     "C_ZYX": (c_zyx, 1),
     "H": (h, 1),
+    "H_NXY": (h_nxy, 1),
+    "H_NXZ": (h_nxz, 1),
+    "H_NYZ": (h_nyz, 1),
     "H_XY": (h_xy, 1),
-    "H_YZ": (h_yz, 1),
     "H_XZ": (h, 1),
+    "H_YZ": (h_yz, 1),
     "S": (s, 1),
     "SQRT_X": (sqrt_x, 1),
     "SQRT_X_DAG": (sqrt_x_dag, 1),
@@ -1001,7 +1122,9 @@ GATE_TABLE: dict[str, tuple[Callable[..., None], int]] = {
     # ---- Two-qubit gates ------------------------------------------------------
     "CNOT": (cnot, 2),
     "CX": (cnot, 2),
+    "CXSWAP": (cxswap, 2),
     "CZ": (cz, 2),
+    "CZSWAP": (czswap, 2),
     "CY": (cy, 2),
     "ISWAP": (iswap, 2),
     "ISWAP_DAG": (iswap_dag, 2),
@@ -1012,6 +1135,8 @@ GATE_TABLE: dict[str, tuple[Callable[..., None], int]] = {
     "SQRT_ZZ": (sqrt_zz, 2),
     "SQRT_ZZ_DAG": (sqrt_zz_dag, 2),
     "SWAP": (swap, 2),
+    "SWAPCX": (swapcx, 2),
+    "SWAPCZ": (swapcz, 2),
     "XCX": (xcx, 2),
     "XCY": (xcy, 2),
     "XCZ": (xcz, 2),
@@ -1031,7 +1156,7 @@ GATE_TABLE: dict[str, tuple[Callable[..., None], int]] = {
     "Z_ERROR": (z_error, 1),
     # ---- Collapsing gates -----------------------------------------------------
     "M": (m, 1),
-    # MPP handled by parser
+    # MPP, SPP, SPP_DAG, MPAD handled by parser
     "MR": (mr, 1),
     "MRX": (mrx, 1),
     "MRY": (mry, 1),
@@ -1039,6 +1164,9 @@ GATE_TABLE: dict[str, tuple[Callable[..., None], int]] = {
     "MX": (mx, 1),
     "MY": (my, 1),
     "MZ": (m, 1),
+    "MXX": (mxx, 2),
+    "MYY": (myy, 2),
+    "MZZ": (mzz, 2),
     "R": (r, 1),
     "RX": (rx, 1),
     "RY": (ry, 1),
